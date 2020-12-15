@@ -1,14 +1,5 @@
 from extensions import db
 
-room_list = []
-
-def get_last_id():
-    if room_list:
-        last_room = room_list[-1]
-    else:
-        return 1
-    return last_room.id + 1
-
 class Room(db.Model):
     __tablename__ = 'room'
 
@@ -24,13 +15,30 @@ class Room(db.Model):
 
     user_id = db.Column(db.Integer(), db.ForeignKey("user.id"))
 
-@property
-def data(self):
-    return {
-        'id': self.id,
-        'name': self.name,
-        'description': self.description,
-        'date': self.date,
-        'start_time': self.start_time,
-        'duration': self.duration
-    }
+    @property
+    def data(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'date': self.date,
+            'start_time': self.start_time,
+            'duration': self.duration,
+            'user_id': self.user_id
+        }
+
+    @classmethod
+    def get_all_published(cls):
+        return cls.query.filter_by(is_publish=True).all()
+
+    @classmethod
+    def get_by_id(cls, room_id):
+        return cls.query.filter_by(id=room_id).first()
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()

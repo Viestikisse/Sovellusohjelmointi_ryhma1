@@ -2,87 +2,130 @@ from flask import request
 from flask_restful import Resource
 from http import HTTPStatus
 
-from models.room import Room, room_list
+from models.room import Room
+
+from flask_jwt_extended import get_jwt_identity, jwt_required, jwt_optional
 
 class RoomListResource(Resource):
 
     def get(self):
+        rooms = Room.get_all_published()
 
         data = []
 
-        for room in room_list:
-            if room.is_publish is True:
-                data.append(room.data)
+        for room in rooms:
+            data.append(room.data())
 
         return {'data': data}, HTTPStatus.OK
 
+    @jwt_required
     def post(self):
-        data = request.get_json()
 
-        room = Room(name=data['name'],
-                    description=data['description'],
-                    date=data['date'],
-                    start_time=data['start_time'],
-                    duration=data['duration'])
+        json_data = request.get_json()
+        current_user = get_jwt_identity()
+        room = Room(name=json_data['name'],
+                    description=json_data['description'],
+                    date=json_data['date'],
+                    start_time=json_data['start_time'],
+                    duration=json_data['duration'],
+                    user_id=current_user)
 
-        room_list.append(room)
+        room.save()
 
-        return room.data, HTTPStatus.CREATED
+        return room.data(), HTTPStatus.CREATED
 
 class RoomResource(Resource):
 
+    @jwt_optional
     def get(self, room_id):
-        room = next((room for room in room_list if room.id == room_id and room.is_publish == True), None)
+        room = Room.get_by_id(room_id=room_id)
 
         if room is None:
             return {'message': 'Room not found.'}, HTTPStatus.NOT_FOUND
 
-        return room.data, HTTPStatus.OK
+        current_user = get_jwt_identity()
 
+        if room.is_publish == False and room.user_id != current_user:
+            return {'message': 'Access is not allowed'}, HTTPStatus.FORBIDDEN
+
+        return room.data(), HTTPStatus.OK
+
+    @jwt_required
     def put(self, room_id):
-        data = request.get_json()
 
-        room = next((room for room in room_list if room.id == room_id), None)
+        json_data = request.get_json()
 
-        if room is None:
-            return {'message': 'Room not found'}, HTTPStatus.NOT_FOUND
-
-        room.name = data['name']
-        room.description = data['description']
-        room.date = data['date']
-        room.start_time = data['start_time']
-        room.duration = data['duration']
-
-        return room.data, HTTPStatus.OK
-
-    def delete(self, room_id):
-        room = next((room for room in room_list if room.id == room_id), None)
+        room = Room.get_by_id(room_id=room_id)
 
         if room is None:
             return {'message': 'Room not found.'}, HTTPStatus.NOT_FOUND
 
-        room_list.remove(room)
+        current_user = get_jwt_identity()
+
+        if current_user != room.user_id:
+            return {'message': 'Access is not allowed.'}, HTTPStatus.FORBIDDEN
+
+        room.name = json_data['name']
+        room.description = json_data['description']
+        room.date = json_data['date']
+        room.start_time = json_data['start_time']
+        room.duration = json_data['duration']
+
+        room.save()
+
+        return room.data(), HTTPStatus.OK
+
+    @jwt_required
+    def delete(self, room_id):
+
+        room = Room.get_by_id(room_id=room_id)
+
+        if room is None:
+            return {'message': 'Room not found.'}, HTTPStatus.NOT_FOUND
+
+        current_user = get_jwt_identity()
+
+        if current_user != room.user_id:
+            return {'message': 'Access is not allowed.'}, HTTPStatus.FORBIDDEN
+
+        room.delete()
 
         return {}, HTTPStatus.NO_CONTENT
 
 class RoomPublishResource(Resource):
 
+    @jwt_required
     def put(self, room_id):
-        room = next((room for room in room_list if room.id == room_id), None)
+
+        room = Room.get_by_id(room_id=room_id)
 
         if room is None:
             return {'message': 'Room not found.'}, HTTPStatus.NOT_FOUND
 
+        current_user = get_jwt_identity()
+
+        if current_user != room.user_id:
+            return {'message': 'Access is not allowed.'}, HTTPStatus.FORBIDDEN
+
         room.is_publish = True
+        room.save()
 
         return {}, HTTPStatus.NO_CONTENT
 
+    @jwt_required
     def delete(self, room_id):
-        room = next((room for room in room_list if room.id == room_id), None)
+
+        room = Room.get_by_id(room_id=room_id)
 
         if room is None:
             return {'message': 'Room not found.'}, HTTPStatus.NOT_FOUND
 
+        current_user = get_jwt_identity()
+
+        if current_user != room.user_id:
+            return {'message': 'Access is not allowed.'}, HTTPStatus.FORBIDDEN
+
         room.is_publish = False
+        room.save()
 
         return {}, HTTPStatus.NO_CONTENT
