@@ -5,7 +5,7 @@ from flask_restful import Api
 from config import Config
 from extensions import db, jwt
 
-from resources.user import UserListResource, UserResource, MeResource
+from resources.user import UserListResource, UserResource, MeResource, UserRoomListResource
 from resources.room import RoomListResource, RoomResource, RoomPublishResource
 from resources.token import TokenResource, RefreshResource, RevokeResource, black_list
 
@@ -37,6 +37,7 @@ def register_resources(app):
 
      api.add_resource(UserListResource, '/users')
      api.add_resource(UserResource, '/users/<string:username>')
+     api.add_resource(UserRoomListResource, '/users/<string:username>/rooms')
      api.add_resource(TokenResource, '/token')
      api.add_resource(RefreshResource, '/refresh')
      api.add_resource(RevokeResource, '/revoke')

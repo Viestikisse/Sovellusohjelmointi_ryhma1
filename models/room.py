@@ -16,16 +16,6 @@ class Room(db.Model):
     user_id = db.Column(db.Integer(), db.ForeignKey("user.id"))
 
     @property
-    def data(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'date': self.date,
-            'start_time': self.start_time,
-            'duration': self.duration,
-            'user_id': self.user_id
-        }
 
     @classmethod
     def get_all_published(cls):
@@ -34,6 +24,17 @@ class Room(db.Model):
     @classmethod
     def get_by_id(cls, room_id):
         return cls.query.filter_by(id=room_id).first()
+
+    @classmethod
+    def get_all_by_user(cls, user_id, visibility='public'):
+        if visibility == 'public':
+            return cls.query.filter_by(user_id=user_id, is_publish=True).all()
+
+        elif visibility == 'private':
+            return cls.query.filter_by(user_id=user_id, is_publish=False).all()
+
+        else:
+            return cls.query.filter_by(user_id=user_id).all()
 
     def save(self):
         db.session.add(self)
